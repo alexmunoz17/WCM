@@ -33,7 +33,23 @@ def get_contact_data(company_data, creation_date):
 
     if company_data.get("address").get("careOf") != "":
         contact_data["x_company_contact"] = company_data.get("address").get("careOf").removeprefix("c/o ")
+    else:
+        url = f"https://www.zefix.ch/ZefixREST/api/v1/firm/{company_data.get("ehraid")}/shabPub.json"
+        response = requests.request("GET", url)
 
+        if response.status_code != 200:
+            raise requests.exceptions.HTTPError(f"Expected 200, got {response.status_code}")
+        response = json.loads(response.text)
+        message = None
+        for single_response in response:
+            mutation_type_list = single_response.get("mutationTypes")
+            for single_mutation_type in mutation_type_list:
+                if single_mutation_type.get("key") == "status.neu":
+                    message = single_response.get("message")
+                    break
+        if message:
+            name_list = message.split("Eingetragene Personen: ")[1]
+            contact_data["x_company_contact"] = f"{name_list.split(", ")[1]} {name_list.split(", ")[0]}"
     return contact_data
 
 def import_contact_to_odoo(contact_data):
@@ -60,4 +76,4 @@ def create_odoo_record(ehra_id, creation_date):
 
 if __name__ == "__main__":
     load_dotenv()
-    create_odoo_record("1667338", "29.11.2024")
+    create_odoo_record("1692349", "12.05.2025")
